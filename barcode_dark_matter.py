@@ -78,6 +78,22 @@ for i in dirs:
         check=pd.read_csv(f'{dmp}\\out\\{name}_blastout.txt',sep='\t')
         #chooses the best alignment of a subject if two by max length
         check=check[(check.groupby(['qacc','sacc'])['length'].transform('max'))==check['length']]
+        check=check[(check.groupby(['qacc','sacc'])['length'].transform('max'))==check['length']]
+
+        check['tof']=np.where(
+            check['sacc']=='u1',check['send'],
+                              np.where(check['sacc']=='u2',-check['sstart'],
+                                       np.where(check['sacc']=='u2_rc',check['send'],
+                                                np.where(check['sacc']=='u1_rc',-check['sstart'],None))))
+        check=check[(check.groupby(['qacc','sacc'])['tof'].transform('max'))==check['tof']]
+        check=check[(check.groupby(['qacc','sacc'])['nident'].transform('max'))==check['nident']]
+        check=check[(check.groupby(['qacc','sacc'])['evalue'].transform('min'))==check['evalue']]
+        check['tof']=np.where(
+            check['sacc']=='u1',check['qend'],
+                              np.where(check['sacc']=='u2',-check['qstart'],
+                                       np.where(check['sacc']=='u2_rc',check['qend'],
+                                                np.where(check['sacc']=='u1_rc',-check['qstart'],None))))
+        check=check[(check.groupby(['qacc','sacc'])['tof'].transform('min'))==check['tof']]
         #filtering meaningful data and extracting barcodes
         def primers(col):
           u=col.unique()
@@ -106,8 +122,7 @@ for i in dirs:
         #adding barcodes to table with not_barcoded reads data and adding information on barcodes from reference table
         full=pd.merge(w,nb,left_on='qacc',right_on='seq',how='outer')
         full=pd.merge(full,ref,left_on='barcode',right_on='UPTAG_seqs',how='left')
-        #orfs={}-??
-        #либо пройти словариками либо эту жуткую аггрегацію использовать и если чо вернуться къ фулл
+        
         def summary(x):
             result = {
                 'count': int(x['count'].sum()),
