@@ -39,15 +39,10 @@ for i in os.listdir(path):#list of directory and file names
         dirs.append(i)
 print(str(datetime.now())+' '+str(dirs))#directories with fastq files
 
-dirs=['1Pet_L001-ds.c61c642938334ad581ddd020b0d2602c']
-
-exp=[]
-totalreadcount=[]
-readcountnb=[]
-readcountb=[]
-uniqueb=[]
-matched=[]
-notmatched=[]
+sumdm = pd.DataFrame({
+    'exp': [], 'total_count': [], 'u_count': [], 'barcoded': [], 'u_barcoded': [], 'not_barcoded': [], 'u_nb': [], 'matched': [], 'u_matched': [], 'not_matched': [], 'u_nm': []
+})
+#df.loc[ len(df.index )] = [value1, value2, value3, ...]
 #same in percent
 for i in dirs:
     p=path+i+'\\artem'
@@ -59,7 +54,6 @@ for i in dirs:
     #parsing not_matched files in folders
     for j in files:
         name=re.split(r'_not_barcoded_raw_qual_count\.csv',j)[0]
-        exp.append(name)
         nb=pd.read_csv(f'{p}\\{j}')#not_barcoded table
         f=open(f'{dmp}\\{name}.fasta',"w")#making fasta with BLAST queries
         for k in nb['seq']:
@@ -68,7 +62,6 @@ for i in dirs:
         print(str(datetime.now())+' '+f'{dmp}\\{name}.fasta')
         
         #BLAST command, searching not_matched sequences in database ref. output file end with blastout.txt. e-value 10, alignment initiating word size 6, search on the same strand, finds only the best hit. outfile contains different information about alignment in tsv format.
-        #os.system(f'blastn -query dark_matter/{name}.fasta -db dark_matter/uref -out dark_matter/out/{name}_blastout.txt -evalue 0.001 -word_size 6 -strand plus')
         
         os.system(f'blastn -query dark_matter/{name}.fasta -db dark_matter/uref -out dark_matter/out/{name}_blastout.txt -evalue 0.001 -word_size 6 -strand plus -max_target_seqs 2 -outfmt \"6 qacc qlen sacc slen length nident evalue qstart qend sstart send\"')
 
@@ -100,6 +93,11 @@ for i in dirs:
                                                     None))))
         u=check['sacc'].unique().tolist()
         w=pd.pivot(data=check, values='ind', index='qacc',columns='sacc').reset_index()
+
+        if 'u1' in u: w=w[(w['u1']<=w['u2'])|pd.isna(w['u1'])]
+        if 'u1_rc' in u: w=w[(w['u2_rc']<=w['u1_rc'])|pd.isna(w['u1_rc'])]
+        w = w.where((pd.notnull(w)), None)
+
         v=np.vectorize(lambda x,y,z:x[y:z])
         vecrc=np.vectorize(rc)
         w['barcode']=w['qacc']
@@ -110,5 +108,53 @@ for i in dirs:
         full=pd.merge(full,ref,left_on='barcode',right_on='UPTAG_seqs',how='left')
         #orfs={}-??
         #либо пройти словариками либо эту жуткую аггрегацію использовать и если чо вернуться къ фулл
+        def summary(x):
+            result = {
+                'count': int(x['count'].sum()),
+                'n': int(x['count'].count()),
+                'Confirmed_deletion': '|'.join(x[~pd.isna(x['Confirmed_deletion'])]['Confirmed_deletion'].unique()),
+                'notes': '|'.join(x[~pd.isna(x['UPTAG_notes'])]['UPTAG_notes'].unique()),
+                'qual': (int((x['qual']*x['count']).sum()))/int(x['count'].sum())
+            }
+            return pd.Series(result)
 
+        f=full.groupby('barcode').apply(summary).reset_index()
+        f = f.sort_values (by = ['count'], ascending = [ False ])
+        nm=f[f['Confirmed_deletion']==''][['barcode','n','count','qual']]
+        nm.to_csv (f'{p}\\{name}_not_matched_dm.csv', index= False )
+
+        m=f[f['Confirmed_deletion']!=''][['Confirmed_deletion','barcode','n','count','notes']]
+
+        def summary1(x):
+            result = {
+                'barcode': '|'.join(x[~pd.isna(x['barcode'])]['barcode'].unique()),
+                'n': int(x['count'].count()),
+                'count': int(x['count'].sum()),
+                'notes': '|'.join(x[~pd.isna(x['notes'])]['notes'].unique())        
+            }
+            return pd.Series(result)
+        m=m.groupby('Confirmed_deletion').apply(summary1).reset_index()
+        m.to_csv (f'{p}\\{name}_output_dm_count.csv', index= False )
+        exess=round(full[pd.isna(full['qacc'])]['count'].sum())
+        exessu=round(len(full[pd.isna(full['qacc'])]['seq'].unique()))
+
+        sumdm.loc[ len(sumdm.index )] = [
+        name,
+        round(nb['count'].sum()),
+        round(len(nb['seq'].unique())),
+        round(f['count'].sum()), 
+        round(len(f['barcode'].unique())),
+        exess,
+        exessu,
+        round(m['count'].sum()), 
+        round(len(m['barcode'].unique())),
+        round(nm['count'].sum()), 
+        round(len(nm['barcode'].unique()))
+        ]
+
+
+#sum information in percent
+sumdm['perc_barcoded']=sumdm['barcoded']/sumdm['total_count']
+sumdm['perc_matched']=sumdm['matched']/sumdm['total_count']
+sumdm.to_csv (f'{path}sumdm.csv', index= False )
 print(str(datetime.now())+' '+'DONE')
