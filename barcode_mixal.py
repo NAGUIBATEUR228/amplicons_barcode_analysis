@@ -11,7 +11,7 @@ print(str(datetime.now())+' '+path)
 #import reference barcode table, made by R scirpt
 ref=pd.read_csv(f'{path}..\\reference.txt')
 print(str(datetime.now()))
-print(ref.head(10))
+print(ref.head(5))
 def sumref(x):
   result = {
         'UPTAG_notes': '|'.join(x[~pd.isna(x['UPTAG_notes'])]['UPTAG_notes'].drop_duplicates()),
@@ -19,8 +19,7 @@ def sumref(x):
     }
   return pd.Series(result)
 refcd=ref.groupby('Confirmed_deletion').apply(sumref).reset_index()
-
-txt=list(ref['UPTAG_seqs'])
+print(refcd.head(5))
 
 #function to find best matches of barcode
 def get_min(mass):
@@ -58,26 +57,6 @@ def go(node,pat,pp=0,dist=0,maxdist=2):#node of trie, pattern, position in patte
             res.extend(go(node.tr[k],pat,pp,dist+1))
             res.extend(go(node.tr[k],pat,pp+1,dist+1))
     return res
-
-print(str(datetime.now())+' building trie')
-
-#node of trie with transition dictionary and row number of barcode, that ends in this node, in ref table
-class Node:
-    def __init__(self,end=None,num=None):
-        self.tr=dict()#потомки по буквамъ
-        self.end=end
-
-#adding barcodes from reference table
-root=Node()
-for j in range(len(txt)):
-    v=root
-    pat=txt[j]
-    for i in range(len(pat)):
-        if not (pat[i] in v.tr.keys()):
-            u=Node()
-            v.tr[pat[i]]=u
-        v=v.tr[pat[i]]
-    v.end=j
 
 dirs=list()
 for i in os.listdir(path):#list of directory and file names
@@ -147,25 +126,54 @@ full=full[~pd.isna(full['qacc'])].reset_index()[['barcode','Confirmed_deletion',
 
 print(str(datetime.now())+' aligning')
 toal=barcodes[~barcodes.isin(check['qacc'])]
-al=pd.DataFrame({'barcode':[],'Confirmed_deletion':[],'UPTAG_seqs':[],'UPTAG_notes':[]})
-for elem in toal:
-      bcd=elem
+al=pd.DataFrame({'barcode':[],'Confirmed_deletion':[],'UPTAG_seqs':[],'UPTAG_notes':[],'dist':[]})
+
+print(str(datetime.now())+' building trie')
+
+#node of trie with transition dictionary and row number of barcode, that ends in this node, in ref table
+class Node:
+    def __init__(self,end=None,num=None):
+        self.tr=dict()#потомки по буквамъ
+        self.end=end
+
+#adding barcodes from reference table
+root=Node()
+txt=toal.tolist()
+for j in range(len(txt)):
+    v=root
+    pat=txt[j]
+    if not isinstance(pat, str):continue
+    for i in range(len(pat)):
+        if not (pat[i] in v.tr.keys()):
+            u=Node()
+            v.tr[pat[i]]=u
+        v=v.tr[pat[i]]
+    v.end=j
+
+print('toal',len(toal))
+
+for elem in ref.iterrows():
+      bcd=elem[1]['UPTAG_seqs']
       if not isinstance(bcd, str):continue
       mass=go(root,bcd)#[[row,dist],...]
       if len(mass)==0: continue
-      subm=get_min(mass)#getting the best hits
-      mass=subm[1]
+      cd=elem[1]['Confirmed_deletion']
+      s=refcd[refcd['Confirmed_deletion']==cd]
       for sm in mass:
-        cd=ref.iloc[sm]['Confirmed_deletion']
-        s=refcd[refcd['Confirmed_deletion']==cd]
-        al.loc[ len(al.index )] = [
+        bcd=txt[sm[0]]
+        al.loc[ len(al.index)] = [
             bcd,
             cd,
             s['UPTAG_seqs'].item(),
-            s['UPTAG_notes'].item()
+            s['UPTAG_notes'].item(),
+            sm[1]
             ]
 print(str(datetime.now())+' aligned')
-
+print('al',len(al))
+al=al.drop_duplicates()
+#or uncomment this to get only the best hits
+#al=al[al.groupby('barcode')['dist'].transform('min')==al['dist']]
+print('al',len(al))
 for i in dirs:
     p=path+i+'\\artem'
     content = os.listdir(p)

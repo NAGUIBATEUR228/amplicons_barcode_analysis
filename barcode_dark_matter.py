@@ -169,6 +169,7 @@ for i in dirs:
             return pd.Series(result)
         m=m.groupby('Confirmed_deletion').apply(summary1).reset_index()
         print(str(datetime.now())+' '+f'{p}\\{name}_output_dm_count.csv')
+        m=m.sort_values (by = ['count'], ascending = [ False ])
         m.to_csv (f'{p}\\{name}_output_dm_count.csv', index= False )
         
         exess=round(full[pd.isna(full['qacc'])]['count'].sum())

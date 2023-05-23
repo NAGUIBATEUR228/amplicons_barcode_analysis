@@ -11,7 +11,7 @@ print(str(datetime.now())+' '+path)
 #import reference barcode table, made by R scirpt
 ref=pd.read_csv(f'{path}..\\reference.txt')
 print(str(datetime.now()))
-print(ref.head(10))
+print(ref.head(5))
 def sumref(x):
   result = {
         'UPTAG_notes': '|'.join(x[~pd.isna(x['UPTAG_notes'])]['UPTAG_notes'].drop_duplicates()),
@@ -19,6 +19,7 @@ def sumref(x):
     }
   return pd.Series(result)
 refcd=ref.groupby('Confirmed_deletion').apply(sumref).reset_index()
+print(refcd.head(5))
 dirs=list()
 for i in os.listdir(path):#list of directory and file names
     if os.path.isdir(os.path.join(path, i)):
