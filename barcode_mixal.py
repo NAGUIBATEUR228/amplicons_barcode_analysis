@@ -3,6 +3,11 @@ import numpy as np
 import pandas as pd 
 import re
 from datetime import datetime
+from sys import argv
+if len(argv)>1:
+    need_to_BLAST=bool(int(argv[1]))
+else: 
+    need_to_BLAST=True
 
 print('directory with script: C:\\Users\\zokmi\\Desktop\\study\\coursework\\')
 directory=input('enter directory with data: ')
@@ -12,14 +17,12 @@ print(str(datetime.now())+' '+path)
 ref=pd.read_csv(f'{path}..\\reference.txt')
 print(str(datetime.now()))
 print(ref.head(5))
-def sumref(x):
-  result = {
-        'UPTAG_notes': '|'.join(x[~pd.isna(x['UPTAG_notes'])]['UPTAG_notes'].drop_duplicates()),
-        'UPTAG_seqs': '|'.join(x[~pd.isna(x['UPTAG_seqs'])]['UPTAG_seqs'].drop_duplicates())
-    }
-  return pd.Series(result)
-refcd=ref.groupby('Confirmed_deletion').apply(sumref).reset_index()
-print(refcd.head(5))
+# refcd = ref.groupby('Confirmed_deletion').agg(
+#     UPTAG_notes= ('UPTAG_notes',lambda x: '|'.join(x[~pd.isna(x)].drop_duplicates())),
+#     UPTAG_seqs=('UPTAG_seqs',lambda x:'|'.join(x[~pd.isna(x)].drop_duplicates())
+# )
+#             ).reset_index()
+# print(refcd.head(5))
 
 #function to find best matches of barcode
 def get_min(mass):
@@ -63,15 +66,16 @@ for i in os.listdir(path):#list of directory and file names
     if os.path.isdir(os.path.join(path, i)):
         dirs.append(i)
 print(str(datetime.now())+' '+str(dirs))#directories with fastq files
-#making fasta file for BLAST database
-f=open('./ref_db.fasta',"w")
-for i in range(len(ref['UPTAG_seqs'])):
-    i1=ref['UPTAG_seqs'][i]
-    i2=ref['Confirmed_deletion'][i]
-    f.write(f'>{i2}\n{i1}\n')
-f.close()
-#BLAST command, making nucleotide database 'ref'
-os.system('makeblastdb -in ./ref_db.fasta -dbtype nucl -out ref')
+if need_to_BLAST:    
+    #making fasta file for BLAST database
+    f=open('./ref_db.fasta',"w")
+    for i in range(len(ref['UPTAG_seqs'])):
+        i1=ref['UPTAG_seqs'][i]
+        i2=i1+'-refseqname'
+        f.write(f'>{i2}\n{i1}\n')
+    f.close()
+    #BLAST command, making nucleotide database 'ref'
+    os.system('makeblastdb -in ./ref_db.fasta -dbtype nucl -out ref')
 
 summixal = pd.DataFrame({
     'exp': [], 'all_count': [], 'm_count': [], 'percentage': [], 'qual': []
@@ -95,21 +99,26 @@ for i in dirs:
         barcodes=pd.Series(pd.concat([barcodes,nb['barcode']],ignore_index=True).unique())
 
 print(len(barcodes))
-
-f=open(f'{path}\\all.fasta',"w")#making fasta with BLAST queries
-for k in barcodes:
-    f.write(f'>{k}-unknownseqname\n{k}\n')
-f.close()
-os.system(f'cd {path}')
-print(str(datetime.now())+' '+f'{p}\\all.fasta')
-#BLAST command, searching not_matched sequences in database ref. output file end with blastout3.txt. e-value 10, alignment initiating word size 6, search on the same strand, finds only the best hit. outfile contains different information about alignment in tsv format.
-os.system(f'blastn -query {path}\\all.fasta -db ref -out {path}\\all_blastout.txt -evalue 10 -word_size 6 -strand plus -max_target_seqs 1 -max_hsps 1 -outfmt \"6 qacc qlen sacc slen length nident evalue qstart qend sstart send\"')#-num_threads 8
-#subtracting -unknownseqname in outfile.
-with open(f'{path}\\all_blastout.txt','r') as f:
-    old_data=f.read()
-new_data = 'qacc\tqlen\tsacc\tslen\tlength\tnident\tevalue\tqstart\tqend\tsstart\tsend\n'+old_data.replace('-unknownseqname\t','\t')
-with open(f'{path}\\all_blastout.txt','w') as f:
-    f.write(new_data)
+if need_to_BLAST:
+    f=open(f'{path}\\all.fasta',"w")#making fasta with BLAST queries
+    for k in barcodes:
+        f.write(f'>{k}-unknownseqname\n{k}\n')
+    f.close()
+    os.system(f'cd {path}')
+    print(str(datetime.now())+' '+f'{p}\\all.fasta')
+    #BLAST command, searching not_matched sequences in database ref. output file end with blastout3.txt. e-value 10, alignment initiating word size 6, search on the same strand, finds only the best hit. outfile contains different information about alignment in tsv format.
+    os.system(f'blastn -query {path}\\all.fasta -db ref -out {path}\\all_blastout.txt -evalue 10 -word_size 6 -strand plus -max_target_seqs 1 -max_hsps 1 -outfmt \"6 qacc qlen sacc slen length nident evalue qstart qend sstart send\"')#-num_threads 8
+    #subtracting -unknownseqname in outfile.
+    with open(f'{path}\\all_blastout.txt','r') as f:
+        old_data=f.read()
+    new_data = 'qacc\tqlen\tsacc\tslen\tlength\tnident\tevalue\tqstart\tqend\tsstart\tsend\n'+old_data.replace('-unknownseqname\t','\t')
+    with open(f'{path}\\all_blastout.txt','w') as f:
+        f.write(new_data)
+    with open(f'{path}\\all_blastout.txt','r') as f:
+        old_data=f.read()
+    new_data = old_data.replace('-refseqname\t','\t')
+    with open(f'{path}\\all_blastout.txt','w') as f:
+        f.write(new_data)
 
 check=pd.read_csv(f'{path}\\all_blastout.txt',sep='\t')
 
@@ -121,7 +130,7 @@ print(str(datetime.now())+' adding reference and not_matched data')
 
 barcode=pd.DataFrame({'barcode':barcodes})
 full=pd.merge(barcode,check,left_on='barcode',right_on='qacc',how='left')
-full=pd.merge(full,refcd,left_on='sacc',right_on='Confirmed_deletion',how='left')
+full=pd.merge(full,ref,left_on='sacc',right_on='UPTAG_seqs',how='left')
 full=full[~pd.isna(full['qacc'])].reset_index()[['barcode','Confirmed_deletion','UPTAG_seqs','UPTAG_notes']]
 
 print(str(datetime.now())+' aligning')
@@ -158,14 +167,16 @@ for elem in ref.iterrows():
       mass=go(root,bcd)#[[row,dist],...]
       if len(mass)==0: continue
       cd=elem[1]['Confirmed_deletion']
-      s=refcd[refcd['Confirmed_deletion']==cd]
+      seq=elem[1]['UPTAG_seqs']
+      note=elem[1]['UPTAG_notes']
+      # s=ref[ref['Confirmed_deletion']==cd]
       for sm in mass:
         bcd=txt[sm[0]]
         al.loc[ len(al.index)] = [
             bcd,
             cd,
-            s['UPTAG_seqs'].item(),
-            s['UPTAG_notes'].item(),
+            seq,
+            note,
             sm[1]
             ]
 print(str(datetime.now())+' aligned')
@@ -190,19 +201,27 @@ for i in dirs:
         m=f[~pd.isna(f['Confirmed_deletion'])].reset_index()[['barcode',    'Confirmed_deletion',   'UPTAG_seqs', 'UPTAG_notes',    'n',    'count',    'qual']]
         nm=pd.merge(al,nm,left_on='barcode',right_on='barcode',how='right')
         nm=nm[~pd.isna(nm['Confirmed_deletion'])].reset_index()[['barcode', 'Confirmed_deletion',   'UPTAG_seqs', 'UPTAG_notes',    'n',    'count',    'qual']]
-        nm['count']=nm.groupby('barcode')['count'].transform(lambda x: x.max()/len(x)).reset_index()['count']
+        maxnm=nm.groupby('barcode')['count'].transform('max').values 
+        lennm=nm.groupby('barcode')['count'].transform('count').values
+        nm['count']=maxnm/lennm
         m=pd.concat([m,nm],ignore_index=True)
-
-        def summary1(x):
-            result = {
-                'barcode': '|'.join(x[~pd.isna(x['barcode'])]['barcode'].drop_duplicates()),
-                'n': x['n'].sum(),
-                'count': x['count'].sum(),
-                'notes': '|'.join(x[~pd.isna(x['UPTAG_notes'])]['UPTAG_notes'].drop_duplicates()) ,
-                'original_barcode': '|'.join(x[~pd.isna(x['UPTAG_seqs'])]['UPTAG_seqs'].drop_duplicates())       
-            }
-            return pd.Series(result)
-        m=m.groupby('Confirmed_deletion').apply(summary1).sort_values (by = ['count'], ascending = [ False ]).reset_index()
+        m = m.groupby('Confirmed_deletion').agg(
+                barcode= ('barcode',lambda x: '|'.join(x[~pd.isna(x)].unique())),
+                n=('n', 'sum'),
+                count=('count', 'sum'),
+                notes=('UPTAG_notes', lambda x: '|'.join(x[~pd.isna(x)].unique())),
+                original_barcode=('UPTAG_seqs',lambda x: '|'.join(x[~pd.isna(x)].unique()))).reset_index()
+        # def summary1(x):
+        #     result = {
+        #         'barcode': '|'.join(x[~pd.isna(x['barcode'])]['barcode'].drop_duplicates()),
+        #         'n': x['n'].sum(),
+        #         'count': x['count'].sum(),
+        #         'notes': '|'.join(x[~pd.isna(x['UPTAG_notes'])]['UPTAG_notes'].drop_duplicates()) ,
+        #         'original_barcode': '|'.join(x[~pd.isna(x['UPTAG_seqs'])]['UPTAG_seqs'].drop_duplicates())       
+        #     }
+        #     return pd.Series(result)
+        # m=m.groupby('Confirmed_deletion').apply(summary1)
+        m=m.sort_values (by = ['count'], ascending = [ False ])
         print(str(datetime.now())+' '+f'{p}\\{name}_mixaled.csv')
         m.to_csv (f'{p}\\{name}_mixaled.csv', index= False )
 
@@ -236,18 +255,27 @@ for i in dirs:
         m=f[~pd.isna(f['Confirmed_deletion'])].reset_index()[['barcode',    'Confirmed_deletion',   'UPTAG_seqs', 'UPTAG_notes',    'n',    'count',    'qual']]
         nm=pd.merge(al,nm,left_on='barcode',right_on='barcode',how='right')
         nm=nm[~pd.isna(nm['Confirmed_deletion'])].reset_index()[['barcode', 'Confirmed_deletion',   'UPTAG_seqs', 'UPTAG_notes',    'n',    'count',    'qual']]
-        nm['count']=nm.groupby('barcode')['count'].transform(lambda x: x.max()/len(x)).reset_index()['count']
+        maxnm=nm.groupby('barcode')['count'].transform('max').values 
+        lennm=nm.groupby('barcode')['count'].transform('count').values
+        nm['count']=maxnm/lennm
         m=pd.concat([m,nm],ignore_index=True)
-        def summary1(x):
-            result = {
-                'barcode': '|'.join(x[~pd.isna(x['barcode'])]['barcode'].drop_duplicates()),
-                'n': x['n'].sum(),
-                'count': x['count'].sum(),
-                'notes': '|'.join(x[~pd.isna(x['UPTAG_notes'])]['UPTAG_notes'].drop_duplicates()) ,
-                'original_barcode': '|'.join(x[~pd.isna(x['UPTAG_seqs'])]['UPTAG_seqs'].drop_duplicates())       
-            }
-            return pd.Series(result)
-        m=m.groupby('Confirmed_deletion').apply(summary1).sort_values (by = ['count'], ascending = [ False ]).reset_index()
+        m = m.groupby('Confirmed_deletion').agg(
+                barcode= ('barcode',lambda x: '|'.join(x[~pd.isna(x)].unique())),
+                n=('n', 'sum'),
+                count=('count', 'sum'),
+                notes=('UPTAG_notes', lambda x: '|'.join(x[~pd.isna(x)].unique())),
+                original_barcode=('UPTAG_seqs',lambda x: '|'.join(x[~pd.isna(x)].unique()))).reset_index()
+        # def summary1(x):
+        #     result = {
+        #         'barcode': '|'.join(x[~pd.isna(x['barcode'])]['barcode'].drop_duplicates()),
+        #         'n': x['n'].sum(),
+        #         'count': x['count'].sum(),
+        #         'notes': '|'.join(x[~pd.isna(x['UPTAG_notes'])]['UPTAG_notes'].drop_duplicates()) ,
+        #         'original_barcode': '|'.join(x[~pd.isna(x['UPTAG_seqs'])]['UPTAG_seqs'].drop_duplicates())       
+        #     }
+        #     return pd.Series(result)
+        # m=m.groupby('Confirmed_deletion').apply(summary1)
+        m=m.sort_values (by = ['count'], ascending = [ False ])
         print(str(datetime.now())+' '+f'{p}\\{name}_mixaled_dm.csv')
         m.to_csv (f'{p}\\{name}_mixaled_dm.csv', index= False )
 

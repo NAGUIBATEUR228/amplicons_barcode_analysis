@@ -36,6 +36,11 @@ directory=input('enter directory with data: ')
 path=f'C:\\Users\\zokmi\\Desktop\\study\\coursework\\{directory}\\'
 print(str(datetime.now())+' '+path)
 ref=pd.read_csv(f'{path}..\\reference.txt')
+# refcd = ref.groupby('Confirmed_deletion').agg(
+#     UPTAG_notes= ('UPTAG_notes',lambda x: '|'.join(x[~pd.isna(x)].drop_duplicates())),
+#     UPTAG_seqs=('UPTAG_seqs',lambda x:'|'.join(x[~pd.isna(x)].drop_duplicates())
+# )
+#             ).reset_index()
 
 dmp=path+'..\\dark_matter'
 if need_to_BLAST:
@@ -232,7 +237,8 @@ if 'u1_rc' in u:
         w['barcode'].values)
 w.set_index('qacc', inplace=True)
 print(str(datetime.now())+' filtered and barcoded')
-
+# refmerge=pd.merge(ref[['UPTAG_seqs','Confirmed_deletion']],refcd,left_on='Confirmed_deletion',right_on='Confirmed_deletion',how='left')
+# print(len(ref)==len(refmerge))#true
 for i in dirs:
     p=path+i+'\\artem'
     content = os.listdir(p)
@@ -251,43 +257,76 @@ for i in dirs:
         print(str(datetime.now())+' '+j)
         full=pd.merge(to_merge,nb,left_on='qacc',right_on='seq',how='outer')
         full=pd.merge(full,ref,left_on='barcode',right_on='UPTAG_seqs',how='left')
+        exess=round(full[pd.isna(full['qacc'])]['count'].sum())
+        exessu=round(len(full[pd.isna(full['qacc'])]['seq'].unique()))
+        full=full[~pd.isna(full['qacc'])]
         print(str(datetime.now())+' aggregation')
-        full['qual']=full['qual']*full['count']
-        f = full.groupby('barcode').agg(
-                count=('count', 'sum'),
-                n=('count', 'count'),
-                Confirmed_deletion=('Confirmed_deletion', lambda x: '|'.join(x[~pd.isna(x)].unique())),
-                notes=('UPTAG_notes', lambda x: '|'.join(x[~pd.isna(x)].unique())),
-                qual=('qual', 'sum')
-            ).reset_index()
-        print(f['qual'].mean())
-        f['qual']=f['qual']/f['count']
-        f = f.sort_values (by = ['count'], ascending = [ False ])
-        print(str(datetime.now())+' split')
-        nm=f[f['Confirmed_deletion']==''][['barcode','n','count','qual']]
-        print(nm['qual'].mean())
-
-        nm.to_csv (f'{p}\\{name}_not_matched_dm.csv', index= False )
-
-        m=f[f['Confirmed_deletion']!=''][['Confirmed_deletion','barcode','n','count','notes']]
+        m=full[~pd.isna(full['Confirmed_deletion'])].copy()
+        m['count']=m.groupby('barcode')['count'].transform('sum')
+        m['n']=m.groupby('barcode')['count'].transform('count')
+        m['notes']=m['UPTAG_notes']
+        m=m[['Confirmed_deletion','barcode','n','count','notes']].drop_duplicates()
         m = m.groupby('Confirmed_deletion').agg(
                 barcode= ('barcode',lambda x: '|'.join(x[~pd.isna(x)].unique())),
-                n=('n', lambda x:int(x.sum())),
-                count=('count', lambda x: int(x.sum())),
+                n=('n', 'sum'),
+                count=('count', 'sum'),
                 notes=('notes', lambda x: '|'.join(x[~pd.isna(x)].unique()))
             ).reset_index()
         print(str(datetime.now())+' '+f'{p}\\{name}_output_dm_count.csv')
         m=m.sort_values (by = ['count'], ascending = [ False ])
         m.to_csv (f'{p}\\{name}_output_dm_count.csv', index= False )
-        exess=round(full[pd.isna(full['qacc'])]['count'].sum())
-        exessu=round(len(full[pd.isna(full['qacc'])]['seq'].unique()))
+        print(str(datetime.now())+' nm')
+        nm=full[pd.isna(full['Confirmed_deletion'])].copy()
+        nm['qual']=nm['qual']*nm['count']
+        nm['count']=nm.groupby('barcode')['count'].transform('sum')
+        nm['n']=nm.groupby('barcode')['count'].transform('count')
+        nm['qual']=nm.groupby('barcode')['qual'].transform('sum')
+        nm['qual']=nm['qual']/nm['count']
+        nm=nm[['barcode','n','count','qual']].drop_duplicates()
+        print(nm['qual'].mean())
+        print(nb['qual'].mean())
+
+        nm.to_csv (f'{p}\\{name}_not_matched_dm.csv', index= False )
+
+
+        # print(str(datetime.now())+' aggregation')
+        # full['qual']=full['qual']*full['count']
+        # full['qual']=full.groupby('barcode')['qual'].transform('sum')
+        # f = full.groupby('barcode').agg(
+        #         count=('count', 'sum'),
+        #         n=('count', 'count'),
+        #         Confirmed_deletion=('Confirmed_deletion', lambda x: '|'.join(x[~pd.isna(x)].unique())),
+        #         notes=('UPTAG_notes', lambda x: '|'.join(x[~pd.isna(x)].unique())),
+        #         qual=('qual', 'sum')
+        #     ).reset_index()
+        # print(f['qual'].mean())
+        # f['qual']=f['qual']/f['count']
+        # f = f.sort_values (by = ['count'], ascending = [ False ])
+        # print(str(datetime.now())+' split')
+        # nm=f[f['Confirmed_deletion']==''][['barcode','n','count','qual']]
+        # print(nm['qual'].mean())
+
+        # nm.to_csv (f'{p}\\{name}_not_matched_dm.csv', index= False )
+
+        # m=f[f['Confirmed_deletion']!=''][['Confirmed_deletion','barcode','n','count','notes']]
+        # m = m.groupby('Confirmed_deletion').agg(
+        #         barcode= ('barcode',lambda x: '|'.join(x[~pd.isna(x)].unique())),
+        #         n=('n', lambda x:int(x.sum())),
+        #         count=('count', lambda x: int(x.sum())),
+        #         notes=('notes', lambda x: '|'.join(x[~pd.isna(x)].unique()))
+        #     ).reset_index()
+        # print(str(datetime.now())+' '+f'{p}\\{name}_output_dm_count.csv')
+        # m=m.sort_values (by = ['count'], ascending = [ False ])
+        # m.to_csv (f'{p}\\{name}_output_dm_count.csv', index= False )
+        # exess=round(full[pd.isna(full['qacc'])]['count'].sum())
+        # exessu=round(len(full[pd.isna(full['qacc'])]['seq'].unique()))
 
         sumdm.loc[ len(sumdm.index )] = [
         name,
         round(nb['count'].sum()),
         round(len(nb['seq'].unique())),
-        round(f['count'].sum()), 
-        round(len(f['barcode'].unique())),
+        round(full['count'].sum()), 
+        round(len(full['barcode'].unique())),
         exess,
         exessu,
         round(m['count'].sum()), 
