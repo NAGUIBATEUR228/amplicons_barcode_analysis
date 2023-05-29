@@ -17,12 +17,6 @@ print(str(datetime.now())+' '+path)
 ref=pd.read_csv(f'{path}..\\reference.txt')
 print(str(datetime.now()))
 print(ref.head(5))
-# refcd = ref.groupby('Confirmed_deletion').agg(
-#     UPTAG_notes= ('UPTAG_notes',lambda x: '|'.join(x[~pd.isna(x)].drop_duplicates())),
-#     UPTAG_seqs=('UPTAG_seqs',lambda x:'|'.join(x[~pd.isna(x)].drop_duplicates())
-# )
-#             ).reset_index()
-# print(refcd.head(5))
 
 dirs=list()
 for i in os.listdir(path):#list of directory and file names
@@ -70,7 +64,7 @@ if need_to_BLAST:
     os.system(f'cd {path}')
     print(str(datetime.now())+' '+f'{p}\\all.fasta')
     #BLAST command, searching not_matched sequences in database ref. output file end with blastout3.txt. e-value 10, alignment initiating word size 6, search on the same strand, finds only the best hit. outfile contains different information about alignment in tsv format.
-    os.system(f'blastn -query {path}\\all.fasta -db ref -out {path}\\all_blastout.txt -evalue 10 -word_size 6 -strand plus -max_target_seqs 1 -max_hsps 1 -outfmt \"6 qacc qlen sacc slen length nident evalue qstart qend sstart send\" -num_threads 10')#-num_threads 8
+    os.system(f'blastn -query {path}\\all.fasta -db ref -out {path}\\all_blastout.txt -evalue 10 -word_size 6 -strand plus -max_target_seqs 1 -max_hsps 1 -outfmt \"6 qacc qlen sacc slen length nident evalue qstart qend sstart send\"')#-num_threads 8
     #subtracting -unknownseqname in outfile.
     with open(f'{path}\\all_blastout.txt','r') as f:
         old_data=f.read()
@@ -119,16 +113,7 @@ for i in dirs:
                 count=('count', 'sum'),
                 notes=('UPTAG_notes', lambda x: '|'.join(x[~pd.isna(x)].unique())),
                 original_barcode=('UPTAG_seqs',lambda x: '|'.join(x[~pd.isna(x)].unique()))).reset_index()
-        # def summary1(x):
-        #     result = {
-        #         'barcode': '|'.join(x[~pd.isna(x['barcode'])]['barcode'].drop_duplicates()),
-        #         'n': x['n'].sum(),
-        #         'count': x['count'].sum(),
-        #         'notes': '|'.join(x[~pd.isna(x['UPTAG_notes'])]['UPTAG_notes'].drop_duplicates()) ,
-        #         'original_barcode': '|'.join(x[~pd.isna(x['UPTAG_seqs'])]['UPTAG_seqs'].drop_duplicates())       
-        #     }
-        #     return pd.Series(result)
-        # m=m.groupby('Confirmed_deletion').apply(summary1)
+
         m=m.sort_values (by = ['count'], ascending = [ False ])
         print(str(datetime.now())+' '+f'{p}\\{name}_blasted.csv')
         m.to_csv (f'{p}\\{name}_blasted.csv', index= False )
@@ -164,16 +149,7 @@ for i in dirs:
                 count=('count', 'sum'),
                 notes=('UPTAG_notes', lambda x: '|'.join(x[~pd.isna(x)].unique())),
                 original_barcode=('UPTAG_seqs',lambda x: '|'.join(x[~pd.isna(x)].unique()))).reset_index()
-        # def summary1(x):
-        #     result = {
-        #         'barcode': '|'.join(x[~pd.isna(x['barcode'])]['barcode'].drop_duplicates()),
-        #         'n': x['n'].sum(),
-        #         'count': x['count'].sum(),
-        #         'notes': '|'.join(x[~pd.isna(x['UPTAG_notes'])]['UPTAG_notes'].drop_duplicates()) ,
-        #         'original_barcode': '|'.join(x[~pd.isna(x['UPTAG_seqs'])]['UPTAG_seqs'].drop_duplicates())       
-        #     }
-        #     return pd.Series(result)
-        # m=m.groupby('Confirmed_deletion').apply(summary1)
+
         m=m.sort_values (by = ['count'], ascending = [ False ])
         print(str(datetime.now())+' '+f'{p}\\{name}_blasted_dm.csv')
         m.to_csv (f'{p}\\{name}_blasted_dm.csv', index= False )
