@@ -17,12 +17,6 @@ print(str(datetime.now())+' '+path)
 ref=pd.read_csv(f'{path}..\\reference.txt')
 print(str(datetime.now()))
 print(ref.head(5))
-# refcd = ref.groupby('Confirmed_deletion').agg(
-#     UPTAG_notes= ('UPTAG_notes',lambda x: '|'.join(x[~pd.isna(x)].drop_duplicates())),
-#     UPTAG_seqs=('UPTAG_seqs',lambda x:'|'.join(x[~pd.isna(x)].drop_duplicates())
-# )
-#             ).reset_index()
-# print(refcd.head(5))
 
 #function to find best matches of barcode
 def get_min(mass):
@@ -169,7 +163,6 @@ for elem in ref.iterrows():
       cd=elem[1]['Confirmed_deletion']
       seq=elem[1]['UPTAG_seqs']
       note=elem[1]['UPTAG_notes']
-      # s=ref[ref['Confirmed_deletion']==cd]
       for sm in mass:
         bcd=txt[sm[0]]
         al.loc[ len(al.index)] = [
@@ -211,16 +204,7 @@ for i in dirs:
                 count=('count', 'sum'),
                 notes=('UPTAG_notes', lambda x: '|'.join(x[~pd.isna(x)].unique())),
                 original_barcode=('UPTAG_seqs',lambda x: '|'.join(x[~pd.isna(x)].unique()))).reset_index()
-        # def summary1(x):
-        #     result = {
-        #         'barcode': '|'.join(x[~pd.isna(x['barcode'])]['barcode'].drop_duplicates()),
-        #         'n': x['n'].sum(),
-        #         'count': x['count'].sum(),
-        #         'notes': '|'.join(x[~pd.isna(x['UPTAG_notes'])]['UPTAG_notes'].drop_duplicates()) ,
-        #         'original_barcode': '|'.join(x[~pd.isna(x['UPTAG_seqs'])]['UPTAG_seqs'].drop_duplicates())       
-        #     }
-        #     return pd.Series(result)
-        # m=m.groupby('Confirmed_deletion').apply(summary1)
+
         m=m.sort_values (by = ['count'], ascending = [ False ])
         print(str(datetime.now())+' '+f'{p}\\{name}_mixaled.csv')
         m.to_csv (f'{p}\\{name}_mixaled.csv', index= False )
@@ -265,16 +249,7 @@ for i in dirs:
                 count=('count', 'sum'),
                 notes=('UPTAG_notes', lambda x: '|'.join(x[~pd.isna(x)].unique())),
                 original_barcode=('UPTAG_seqs',lambda x: '|'.join(x[~pd.isna(x)].unique()))).reset_index()
-        # def summary1(x):
-        #     result = {
-        #         'barcode': '|'.join(x[~pd.isna(x['barcode'])]['barcode'].drop_duplicates()),
-        #         'n': x['n'].sum(),
-        #         'count': x['count'].sum(),
-        #         'notes': '|'.join(x[~pd.isna(x['UPTAG_notes'])]['UPTAG_notes'].drop_duplicates()) ,
-        #         'original_barcode': '|'.join(x[~pd.isna(x['UPTAG_seqs'])]['UPTAG_seqs'].drop_duplicates())       
-        #     }
-        #     return pd.Series(result)
-        # m=m.groupby('Confirmed_deletion').apply(summary1)
+
         m=m.sort_values (by = ['count'], ascending = [ False ])
         print(str(datetime.now())+' '+f'{p}\\{name}_mixaled_dm.csv')
         m.to_csv (f'{p}\\{name}_mixaled_dm.csv', index= False )
