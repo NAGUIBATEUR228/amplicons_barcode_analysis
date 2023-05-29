@@ -12,15 +12,6 @@ else:
 u1 = "GATGTCCACGAGGTCTCT"
 u2 = "CGTACGCTGCAGGTCGAC"
 
-
-# def rc(sequence):   
-#     complement = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A'}
-#     vec=np.vectorize(complement.get) 
-#     seq_array = np.array(list(sequence))
-#     rev_seq_array = seq_array[::-1]
-#     comp_seq_array = vec(rev_seq_array)
-#     rev_comp_seq = ''.join(comp_seq_array)
-#     return rev_comp_seq
 def rc(seq):
     complement = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A'}
     reverse_complement = ""
@@ -36,11 +27,6 @@ directory=input('enter directory with data: ')
 path=f'C:\\Users\\zokmi\\Desktop\\study\\coursework\\{directory}\\'
 print(str(datetime.now())+' '+path)
 ref=pd.read_csv(f'{path}..\\reference.txt')
-# refcd = ref.groupby('Confirmed_deletion').agg(
-#     UPTAG_notes= ('UPTAG_notes',lambda x: '|'.join(x[~pd.isna(x)].drop_duplicates())),
-#     UPTAG_seqs=('UPTAG_seqs',lambda x:'|'.join(x[~pd.isna(x)].drop_duplicates())
-# )
-#             ).reset_index()
 
 dmp=path+'..\\dark_matter'
 if need_to_BLAST:
@@ -120,7 +106,6 @@ if changed:
     print(str(datetime.now())+' 1')
     if ch(check):
         print(str(datetime.now()))
-        #check=check.loc[(check.groupby(['qacc','sacc']))['length'].idxmax()]
         check=check[(check.groupby(['qacc','sacc'])['length'].transform('max'))==check['length']]
     else:
         changed=False
@@ -145,7 +130,6 @@ if changed:
         print(str(datetime.now())+' select')
         check['tof'] = np.select(conditions, values, default=None)
         print(str(datetime.now())+' tof')
-        #check=check.loc[(check.groupby(['qacc','sacc']))['tof'].idxmax()]
         check=check[(check.groupby(['qacc','sacc'])['tof'].transform('max'))==check['tof']]
     else:
         changed=False
@@ -237,8 +221,6 @@ if 'u1_rc' in u:
         w['barcode'].values)
 w.set_index('qacc', inplace=True)
 print(str(datetime.now())+' filtered and barcoded')
-# refmerge=pd.merge(ref[['UPTAG_seqs','Confirmed_deletion']],refcd,left_on='Confirmed_deletion',right_on='Confirmed_deletion',how='left')
-# print(len(ref)==len(refmerge))#true
 for i in dirs:
     p=path+i+'\\artem'
     content = os.listdir(p)
@@ -287,39 +269,6 @@ for i in dirs:
         print(nb['qual'].mean())
 
         nm.to_csv (f'{p}\\{name}_not_matched_dm.csv', index= False )
-
-
-        # print(str(datetime.now())+' aggregation')
-        # full['qual']=full['qual']*full['count']
-        # full['qual']=full.groupby('barcode')['qual'].transform('sum')
-        # f = full.groupby('barcode').agg(
-        #         count=('count', 'sum'),
-        #         n=('count', 'count'),
-        #         Confirmed_deletion=('Confirmed_deletion', lambda x: '|'.join(x[~pd.isna(x)].unique())),
-        #         notes=('UPTAG_notes', lambda x: '|'.join(x[~pd.isna(x)].unique())),
-        #         qual=('qual', 'sum')
-        #     ).reset_index()
-        # print(f['qual'].mean())
-        # f['qual']=f['qual']/f['count']
-        # f = f.sort_values (by = ['count'], ascending = [ False ])
-        # print(str(datetime.now())+' split')
-        # nm=f[f['Confirmed_deletion']==''][['barcode','n','count','qual']]
-        # print(nm['qual'].mean())
-
-        # nm.to_csv (f'{p}\\{name}_not_matched_dm.csv', index= False )
-
-        # m=f[f['Confirmed_deletion']!=''][['Confirmed_deletion','barcode','n','count','notes']]
-        # m = m.groupby('Confirmed_deletion').agg(
-        #         barcode= ('barcode',lambda x: '|'.join(x[~pd.isna(x)].unique())),
-        #         n=('n', lambda x:int(x.sum())),
-        #         count=('count', lambda x: int(x.sum())),
-        #         notes=('notes', lambda x: '|'.join(x[~pd.isna(x)].unique()))
-        #     ).reset_index()
-        # print(str(datetime.now())+' '+f'{p}\\{name}_output_dm_count.csv')
-        # m=m.sort_values (by = ['count'], ascending = [ False ])
-        # m.to_csv (f'{p}\\{name}_output_dm_count.csv', index= False )
-        # exess=round(full[pd.isna(full['qacc'])]['count'].sum())
-        # exessu=round(len(full[pd.isna(full['qacc'])]['seq'].unique()))
 
         sumdm.loc[ len(sumdm.index )] = [
         name,
