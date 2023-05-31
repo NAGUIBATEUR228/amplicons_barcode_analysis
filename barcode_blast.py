@@ -106,7 +106,7 @@ for i in dirs:
         name=re.split(r'_not_matched\.csv',j)[0]
         f=pd.merge(full,nb,left_on='barcode',right_on='barcode',how='right')
         m=f[~pd.isna(f['Confirmed_deletion'])].reset_index()[['barcode',    'Confirmed_deletion',   'UPTAG_seqs', 'UPTAG_notes',    'n',    'count',    'qual']]
-        #print(str(datetime.now()))
+        
         m = m.groupby('Confirmed_deletion').agg(
                 barcode= ('barcode',lambda x: '|'.join(x[~pd.isna(x)].unique())),
                 n=('n', 'sum'),
@@ -137,9 +137,9 @@ for i in dirs:
     for file in content:
         if os.path.isfile(os.path.join(p, file)) and file.endswith('not_matched_dm.csv'):
             files.append(file)
-    #parsing not_matched files in folders
+    #parsing not_matched_dm files in folders
     for j in files:
-        nb=pd.read_csv(f'{p}\\{j}')#not_matched table
+        nb=pd.read_csv(f'{p}\\{j}')#not_matched_dm table
         name=re.split(r'_not_matched_dm\.csv',j)[0]
         f=pd.merge(full,nb,left_on='barcode',right_on='barcode',how='right')
         m=f[~pd.isna(f['Confirmed_deletion'])].reset_index()[['barcode',    'Confirmed_deletion',   'UPTAG_seqs', 'UPTAG_notes',    'n',    'count',    'qual']]
