@@ -18,18 +18,6 @@ ref=pd.read_csv(f'{path}..\\reference.txt')
 print(str(datetime.now()))
 print(ref.head(5))
 
-#function to find best matches of barcode
-def get_min(mass):
-    res=[228,[]]
-    for i in mass:
-        if i[1]<res[0]:
-            res[0]=i[1]
-            res[1]=[i[0]]
-            continue
-        if i[1]==res[0]:
-            res[1].append(i[0])
-    return res
-
 #function globally aligns a barcode with a trie and returns a list of pairs [row in ref table with matched ORF,distance]
 def go(node,pat,pp=0,dist=0,maxdist=2):#node of trie, pattern, position in pattern, current distance, maximum possible distance.
     res=[]
@@ -89,7 +77,6 @@ for i in dirs:
     #parsing not_matched files in folders
     for j in files:
         nb=pd.read_csv(f'{p}\\{j}')#not_matched table
-        #print(len(nb[~nb['barcode'].isin(barcodes)]))
         barcodes=pd.Series(pd.concat([barcodes,nb['barcode']],ignore_index=True).unique())
 
 print(len(barcodes))
@@ -133,13 +120,13 @@ al=pd.DataFrame({'barcode':[],'Confirmed_deletion':[],'UPTAG_seqs':[],'UPTAG_not
 
 print(str(datetime.now())+' building trie')
 
-#node of trie with transition dictionary and row number of barcode, that ends in this node, in ref table
+#node of trie with transition dictionary and row number of barcode, that ends in this node, in toal table
 class Node:
     def __init__(self,end=None,num=None):
-        self.tr=dict()#потомки по буквамъ
+        self.tr=dict()#descendants by letters
         self.end=end
 
-#adding barcodes from reference table
+#adding barcodes from toal table
 root=Node()
 txt=toal.tolist()
 for j in range(len(txt)):
@@ -190,13 +177,16 @@ for i in dirs:
         nb=pd.read_csv(f'{p}\\{j}')#not_matched table
         name=re.split(r'_not_matched\.csv',j)[0]
         f=pd.merge(full,nb,left_on='barcode',right_on='barcode',how='right')
+        
         nm=f[pd.isna(f['Confirmed_deletion'])].reset_index()[['barcode','n','count','qual']]
         m=f[~pd.isna(f['Confirmed_deletion'])].reset_index()[['barcode',    'Confirmed_deletion',   'UPTAG_seqs', 'UPTAG_notes',    'n',    'count',    'qual']]
+        
         nm=pd.merge(al,nm,left_on='barcode',right_on='barcode',how='right')
         nm=nm[~pd.isna(nm['Confirmed_deletion'])].reset_index()[['barcode', 'Confirmed_deletion',   'UPTAG_seqs', 'UPTAG_notes',    'n',    'count',    'qual']]
         maxnm=nm.groupby('barcode')['count'].transform('max').values 
         lennm=nm.groupby('barcode')['count'].transform('count').values
         nm['count']=maxnm/lennm
+        
         m=pd.concat([m,nm],ignore_index=True)
         m = m.groupby('Confirmed_deletion').agg(
                 barcode= ('barcode',lambda x: '|'.join(x[~pd.isna(x)].unique())),
@@ -204,7 +194,6 @@ for i in dirs:
                 count=('count', 'sum'),
                 notes=('UPTAG_notes', lambda x: '|'.join(x[~pd.isna(x)].unique())),
                 original_barcode=('UPTAG_seqs',lambda x: '|'.join(x[~pd.isna(x)].unique()))).reset_index()
-
         m=m.sort_values (by = ['count'], ascending = [ False ])
         print(str(datetime.now())+' '+f'{p}\\{name}_mixaled.csv')
         m.to_csv (f'{p}\\{name}_mixaled.csv', index= False )
@@ -229,19 +218,21 @@ for i in dirs:
     for file in content:
         if os.path.isfile(os.path.join(p, file)) and file.endswith('not_matched_dm.csv'):
             files.append(file)
-    #parsing not_matched files in folders
+    #parsing not_matched_dm files in folders
     for j in files:
-        nb=pd.read_csv(f'{p}\\{j}')#not_matched table
+        nb=pd.read_csv(f'{p}\\{j}')#not_matched_dm table
         name=re.split(r'_not_matched_dm\.csv',j)[0]
-        #merging blastout3,not_matched and reference table in order to obtain necessary information
         f=pd.merge(full,nb,left_on='barcode',right_on='barcode',how='right')
+        
         nm=f[pd.isna(f['Confirmed_deletion'])].reset_index()[['barcode','n','count','qual']]
         m=f[~pd.isna(f['Confirmed_deletion'])].reset_index()[['barcode',    'Confirmed_deletion',   'UPTAG_seqs', 'UPTAG_notes',    'n',    'count',    'qual']]
+        
         nm=pd.merge(al,nm,left_on='barcode',right_on='barcode',how='right')
         nm=nm[~pd.isna(nm['Confirmed_deletion'])].reset_index()[['barcode', 'Confirmed_deletion',   'UPTAG_seqs', 'UPTAG_notes',    'n',    'count',    'qual']]
         maxnm=nm.groupby('barcode')['count'].transform('max').values 
         lennm=nm.groupby('barcode')['count'].transform('count').values
         nm['count']=maxnm/lennm
+        
         m=pd.concat([m,nm],ignore_index=True)
         m = m.groupby('Confirmed_deletion').agg(
                 barcode= ('barcode',lambda x: '|'.join(x[~pd.isna(x)].unique())),
@@ -249,7 +240,6 @@ for i in dirs:
                 count=('count', 'sum'),
                 notes=('UPTAG_notes', lambda x: '|'.join(x[~pd.isna(x)].unique())),
                 original_barcode=('UPTAG_seqs',lambda x: '|'.join(x[~pd.isna(x)].unique()))).reset_index()
-
         m=m.sort_values (by = ['count'], ascending = [ False ])
         print(str(datetime.now())+' '+f'{p}\\{name}_mixaled_dm.csv')
         m.to_csv (f'{p}\\{name}_mixaled_dm.csv', index= False )
