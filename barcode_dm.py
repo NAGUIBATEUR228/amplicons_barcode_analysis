@@ -11,7 +11,7 @@ else:
 
 u1 = "GATGTCCACGAGGTCTCT"
 u2 = "CGTACGCTGCAGGTCGAC"
-
+#reverse-complement string
 def rc(seq):
     complement = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A'}
     reverse_complement = ""
@@ -36,8 +36,8 @@ if need_to_BLAST:
     for i,j in ud.items():
         f.write(f'>{i}\n{j}\n')
     f.close()
-
     os.system(f'makeblastdb -in dark_matter/query_u.fasta -dbtype nucl -out dark_matter/uref')
+    
 sumdm = pd.DataFrame({
     'exp': [], 'total_count': [], 'u_count': [], 'barcoded': [], 'u_barcoded': [], 'not_barcoded': [], 'u_nb': [], 'matched': [], 'u_matched': [], 'not_matched': [], 'u_nm': []
 })
