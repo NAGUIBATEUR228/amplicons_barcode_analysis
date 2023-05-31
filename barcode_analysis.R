@@ -56,9 +56,9 @@ u2_rc <- reverseComplement(u2)
 "%+%" <- function(...){
   paste0(...)
 }
-
+#directories in 'folder'
 fastqdirectories<-list.dirs(path='../'%+%folder,recursive=FALSE)
-
+#files of 'typefq' type in that directories
 fastqfiles<-unlist(map(fastqdirectories, ~paste(.x,dir(.x)%>%str_subset(typefq),sep='/')))
 
 for (j in fastqfiles){
@@ -68,13 +68,11 @@ strm <- FastqStreamer(j)
 out_table <- tibble(seq = character(), qual=numeric(), count = integer())
 
 repeat {
-#if(FALSE){
+#ShortReadQ object from BioConductor
   fq <- yield(strm)
   if (length(fq) == 0) {break}
   quals<-quality(fq)
-  t1 <- add_column(sread(fq)%>%as.data.frame()%>%as_tibble(),as(quals,"matrix")%>%rowMeans())## consider increase/decrease n here! in tables function
-  ## n limits the amplicons diversity
-  #n must be large as possible. depends on read number in fq
+  t1 <- add_column(sread(fq)%>%as.data.frame()%>%as_tibble(),as(quals,"matrix")%>%rowMeans())
   colnames(t1)<-c('seq_new','qual')
   attach_this_table <- t1%>%
     group_by(seq_new)%>%
@@ -89,17 +87,18 @@ repeat {
               qual=(replace_na(count,0)*replace_na(qual,0)+replace_na(count_new,0)*replace_na(qual_new,0))/(replace_na(count,0)+replace_na(count_new,0)))
 }
 
-#system('python ../fastqstreamer.py '%+%j)
 raw_reads_count <- out_table%>%arrange(desc(count))
-#mkdirs(j%+%'/../artem/')
+#creates a folder for output files next to fastq files
 dir.create(j%+%'/../artem/',showWarnings = FALSE)
 setwd(j%+%'/../artem/')
+#shortens filename
 i<-str_remove(j,excess)
 
-write_csv(raw_reads_count, 
-                paste(na.omit(str_match(i,fastqdirectories%+%'/(.*?)'%+%typefq)[,2])[1], 
-                                 "raw_reads_count.csv", 
-                      sep = "_"))
+write_csv(raw_reads_count,
+          #extracts filename without extension and absolute path
+          paste(na.omit(str_match(i,fastqdirectories%+%'/(.*?)'%+%typefq)[,2])[1],
+                "raw_reads_count.csv",
+                sep = "_"))
 
 barcoded_reads <- raw_reads_count%>% 
   filter(
@@ -110,8 +109,8 @@ barcoded_reads <- raw_reads_count%>%
     is.na(barcode),
     str_match(seq,u2_rc%+%"\\s*(.*?)\\s*"%+%u1_rc)[,2],
     barcode))%>%
-  filter(!is.na(barcode))%>%#if u1u2? 
-  mutate(barcode = ifelse(str_detect(seq, "GATGTCCACGAGGTCTCT"),
+  filter(!is.na(barcode))%>%#if u1-u2
+  mutate(barcode = ifelse(str_detect(seq, "GATGTCCACGAGGTCTCT"),#u1
                           barcode, 
                           rev_compl_string(barcode)))
 
@@ -158,7 +157,7 @@ hist<-output %>%
     fill='#F06C98',
     color='black')+
   theme_bw()+
-  labs(x = "Количество чтений баркода", y="Количество баркодов с таким числом чтений")+
+  labs(x = "Number of reads of barcode", y="Number of barodes with such number of reads")+
   scale_y_log10()
 
 ggsave(paste(na.omit(str_match(i,fastqdirectories%+%'/(.*?)'%+%typefq)[,2])[1], 
