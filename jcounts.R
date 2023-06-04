@@ -65,10 +65,7 @@ read_files<-function(type,abrev,join=FALSE){
 chif<-read_files("output_count",'',TRUE)
 read_files("output_dm_count",'dm',TRUE)
 read_files("mixaled_dm",'mdm',TRUE)
-read_files("blasted_dm",'bdm',TRUE)
 read_files("mixaled",'m',TRUE)
-read_files("blasted",'b',TRUE)
-read_files('raw_reads_count','r')
 
 tbs<-c(tablenames,tablenames%+%'dm',tablenames%+%'mdm',tablenames%+%'m')
 
