@@ -31,7 +31,7 @@ dds <- DESeqDataSetFromMatrix(countData = cd,
                               colData = colnames,
                               design = ~ condition)
 dds
-keep <- rowSums(counts(dds)) >= 0
+keep <- rowSums(counts(dds)) >= 100
 dds <- dds[keep,]
 
 dds <- DESeq(dds)
@@ -41,12 +41,9 @@ res <- results(dds, contrast=c("condition",t,u))
 return(res)
 }
 ### res <- results(dds, contrast=c("condition","treated","untreated"))
-res<-difexp(jc,'rd','yd')
-plotMA(res, ylim=c(-5,5))
-summary(res)
-res
 
 
+#GO
 sg<-tibble(gene=character())
 sg_tc<-character(0)
 cut_tc<-character(0)
@@ -64,8 +61,8 @@ res %>% as.data.frame() %>%
 res%>% mutate(pa=p.adjust(pvalue))%>%
   filter(pa < 10e-5)->cut
 
-#write_tsv(cut%>%filter(log2FoldChange>0)%>%select(gene),'../GOen/'%+%condition%+%'_p.txt',col_names=F)
-#write_tsv(cut%>%filter(log2FoldChange<0)%>%select(gene),'../GOen/'%+%condition%+%'_m.txt',col_names=F)
+write_tsv(cut%>%filter(log2FoldChange>0)%>%select(gene),'../GOen/'%+%condition%+%'_p.txt',col_names=F)
+write_tsv(cut%>%filter(log2FoldChange<0)%>%select(gene),'../GOen/'%+%condition%+%'_m.txt',col_names=F)
 write_tsv(res%>%select(gene),'../GOen/'%+%condition%+%'_ref.txt',col_names=F)
 
 if(nrow(cut)<20){
@@ -105,12 +102,7 @@ plot<-pheatmap(mat, annotation_row = ann, annotation_names_row=F, treeheight_col
 ggsave("../top_LogFC_genes_all_fin.png",plot,scale=2)
 
 
-
-sgd<-read_tsv('sgd_term.txt')
-ab<-read_tsv('ab.txt',col_names = c('name'))
-sgd%>%mutate(name=ifelse(is.na(std_name),sys_name,std_name))%>%select(name,DBID)%>%right_join(ab)%>%select(DBID)%>%na.omit%>%write_tsv('DBID.txt',col_names=F)
-ab%>%filter(!((name %in% sgd$std_name)|(name %in% sgd$sys_name)))
-sgd%>%mutate(name=ifelse(is.na(std_name),sys_name,std_name))%>%select(name,DBID)%>%right_join(read_tsv('goref.txt',col_names = 'name'))%>%select(DBID)%>%na.omit%>%write_tsv('DBID_ref.txt',col_names=F)
+res<-difexp(jc,'rd','yd')
 
 plo<-EnhancedVolcano(res,
                      #title=bquote(~"G\u00D7"*italic(rho)^'-'~vs~"D\u00D7"*italic(rho)^'-'),#bquote(~"D\u00D7"*italic(rho)^0~vs~D)
@@ -130,9 +122,8 @@ plo<-EnhancedVolcano(res,
                      drawConnectors = TRUE,
                      #xlim=c(-5,10),
                      widthConnectors = 0.75)
-ggsave('volcano_pgpd.png',plo,width = 1280, height = 720, units = 'px', scale=3)
+ggsave('volcano.png',plo,width = 1280, height = 720, units = 'px', scale=3)
 
 
 #dev.new(width = 1280, height = 720, units='px', scale=5)
 
-res<-difexp(jc,'rd','yd')
